@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="無音カメラ">
+<meta name="theme-color" content="#0e1113">
+<title>無音カメラ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: status strip / full-bleed viewfinder / control deck, all inside the phone's safe areas. Single dark look (camera UI). */
+:root{
+  --ink:#0e1113;
+  --deck:#161a1d;
+  --line:#2b3237;
+  --fg:#e9ecec;
+  --dim:#8b979b;
+  --accent:#a8d0c9;
+  --danger:#e48a7a;
+  --f-ui:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --gutter-l:max(16px,env(safe-area-inset-left,0px));
+  --gutter-r:max(16px,env(safe-area-inset-right,0px));
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-ui);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+.app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* status strip */
+.status{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:10px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);font-family:var(--f-data);font-size:12px;letter-spacing:.06em;color:var(--dim);font-variant-numeric:tabular-nums}
+.mute{display:flex;align-items:center;gap:8px;color:var(--accent)}
+.mute svg{width:16px;height:16px}
+.frame-no{color:var(--fg)}
+
+/* viewfinder */
+.finder{position:relative;flex:1;min-height:0;background:#000;overflow:hidden}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+video.mirror{transform:scaleX(-1)}
+.grid{position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(to right,transparent calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% + .5px),transparent calc(66.666% + .5px)),
+    linear-gradient(to bottom,transparent calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% + .5px),transparent calc(66.666% + .5px))}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.go{animation:flash .22s ease-out}
+@keyframes flash{0%{opacity:.75}100%{opacity:0}}
+.count{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-data);font-size:min(34vw,180px);font-weight:500;color:rgba(255,255,255,.92);text-shadow:0 2px 24px rgba(0,0,0,.5);pointer-events:none}
+
+.zoom{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(78%,320px);display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;background:rgba(14,17,19,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:var(--f-data);font-size:12px;font-variant-numeric:tabular-nums}
+.zoom input{flex:1;min-width:0;accent-color:var(--accent)}
+.zoom output{min-width:3.6em;text-align:right}
+
+/* start / error gate */
+.gate{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding-block:24px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);text-align:center;background:var(--ink)}
+.gate h1{margin:0;font-size:28px;font-weight:700;letter-spacing:.04em;text-wrap:balance}
+.gate p{margin:0;max-width:30em;color:var(--dim);line-height:1.7;font-size:14px;text-wrap:pretty}
+.gate .spec{font-family:var(--f-data);font-size:11px;letter-spacing:.12em;color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;background:var(--fg);color:var(--ink);font-weight:700;font-size:15px}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
+
+/* deck */
+.deck{background:var(--deck);border-top:1px solid var(--line);padding-block:12px 18px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);display:flex;flex-direction:column;gap:14px}
+.modes{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.chip{min-height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--dim);display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{color:var(--ink);background:var(--accent);border-color:var(--accent)}
+.chip .val{font-family:var(--f-data);font-size:12px}
+.row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.thumb{justify-self:start;position:relative;width:52px;height:52px;border-radius:10px;border:1px solid var(--line);background:#000 center/cover no-repeat}
+.thumb:disabled{opacity:.35;cursor:default}
+.badge{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--ink);font-family:var(--f-data);font-size:11px;font-weight:500;display:grid;place-items:center}
+.shutter{width:76px;height:76px;border-radius:50%;border:3px solid var(--fg);display:grid;place-items:center}
+.shutter span{width:60px;height:60px;border-radius:50%;background:var(--fg);transition:transform .08s ease}
+.shutter:active span{transform:scale(.88)}
+.shutter:disabled{opacity:.4}
+.flip{justify-self:end;width:52px;height:52px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center}
+.flip svg{width:24px;height:24px}
+
+/* gallery + viewer sheets */
+.sheet{position:fixed;inset:0;z-index:10;background:var(--ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);border-bottom:1px solid var(--line)}
+.sheet-head h2{margin:0;font-size:16px;font-weight:700}
+.sheet-head .sub{font-family:var(--f-data);font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.icon-btn{min-width:44px;min-height:44px;display:grid;place-items:center;font-size:14px;color:var(--dim)}
+.shots{flex:1;min-height:0;overflow-y:auto;padding-block:12px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;align-content:start}
+.shot{position:relative;aspect-ratio:3/4;max-width:100%;border-radius:6px;overflow:hidden;background:#000}
+.shot img{width:100%;height:100%;object-fit:cover;display:block}
+.shot .tag{position:absolute;left:5px;bottom:5px;padding:1px 6px;border-radius:4px;background:rgba(14,17,19,.72);font-family:var(--f-data);font-size:10px;color:var(--accent)}
+.sheet-foot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding-block:12px 16px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);border-top:1px solid var(--line)}
+.note{margin:0;width:100%;text-align:center;font-size:12px;color:var(--dim);line-height:1.6}
+.view-img{flex:1;min-height:0;display:grid;place-items:center;background:#000}
+.view-img img{max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;max-width:calc(100% - 32px);padding:10px 16px;border-radius:10px;background:rgba(233,236,236,.95);color:var(--ink);font-size:13px;line-height:1.5;text-align:center}
+
+@media (prefers-reduced-motion:reduce){.flash.go{animation-duration:.01s}.shutter span{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="status">
+    <span class="mute" aria-label="シャッター音なし">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>
+      無音
+    </span>
+    <span id="res">— × —</span>
+    <span class="frame-no">No.<span id="frameNo">00</span></span>
+  </header>
+
+  <main class="finder">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="grid" id="grid" hidden></div>
+    <div class="flash" id="flash"></div>
+    <div class="count" id="count" hidden></div>
+    <div class="zoom" id="zoomWrap" hidden>
+      <span>W</span>
+      <input type="range" id="zoom" aria-label="ズーム">
+      <output id="zoomOut">1.0×</output>
+    </div>
+
+    <section class="gate" id="gate">
+      <div class="spec">SHUTTER SOUND · OFF</div>
+      <h1>無音カメラ</h1>
+      <p id="gateMsg">カメラ映像のコマをそのまま静止画にするので、シャッター音は鳴りません。撮った写真は「保存」から写真アプリに入れられます。</p>
+      <button class="btn" id="startBtn" type="button">カメラを起動</button>
+    </section>
+  </main>
+
+  <footer class="deck">
+    <div class="modes">
+      <button class="chip" id="gridBtn" type="button" aria-pressed="false">グリッド</button>
+      <button class="chip" id="timerBtn" type="button" aria-pressed="false">タイマー <span class="val" id="timerVal">オフ</span></button>
+    </div>
+    <div class="row">
+      <button class="thumb" id="thumb" type="button" aria-label="撮った写真を見る" disabled><span class="badge" id="badge" hidden>0</span></button>
+      <button class="shutter" id="shutter" type="button" aria-label="撮影" disabled><span></span></button>
+      <button class="flip" id="flip" type="button" aria-label="前後カメラを切り替え" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></svg>
+      </button>
+    </div>
+  </footer>
+</div>
+
+<!-- gallery -->
+<section class="sheet" id="gallery" hidden aria-label="撮った写真">
+  <div class="sheet-head">
+    <div><h2>撮った写真</h2><div class="sub" id="galSub"></div></div>
+    <button class="icon-btn" id="galClose" type="button">閉じる</button>
+  </div>
+  <div class="shots" id="shots"></div>
+  <div class="sheet-foot">
+    <button class="btn" id="saveAll" type="button">未保存をまとめて保存</button>
+    <p class="note">このアプリを閉じると、保存していない写真は消えます。</p>
+  </div>
+</section>
+
+<!-- single photo -->
+<section class="sheet" id="viewer" hidden aria-label="写真">
+  <div class="sheet-head">
+    <div><h2 id="viewTitle">写真</h2><div class="sub" id="viewSub"></div></div>
+    <button class="icon-btn" id="viewClose" type="button">戻る</button>
+  </div>
+  <div class="view-img"><img id="viewImg" alt="撮影した写真"></div>
+  <div class="sheet-foot">
+    <button class="btn" id="viewSave" type="button">保存</button>
+    <button class="btn danger" id="viewDel" type="button">削除</button>
+    <p class="note">保存がうまくいかないときは、写真を長押しして保存できます。</p>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const video=$('video'), gate=$('gate'), gateMsg=$('gateMsg'), startBtn=$('startBtn');
+const shutterBtn=$('shutter'), flipBtn=$('flip'), thumbBtn=$('thumb'), badge=$('badge');
+const resEl=$('res'), frameNo=$('frameNo'), flashEl=$('flash'), countEl=$('count');
+const zoomWrap=$('zoomWrap'), zoom=$('zoom'), zoomOut=$('zoomOut');
+
+let stream=null, facing='environment', started=false, busy=false;
+let timer=0; const TIMERS=[0,3,10];
+let shots=[]; let viewing=-1; let shotCounter=0;
+
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+let toastT;
+function toast(text){ const t=$('toast'); t.textContent=text; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
+
+function errText(e){
+  const n=e && e.name;
+  if(n==='NotAllowedError'||n==='SecurityError') return 'カメラの使用が許可されていません。ブラウザの設定でこのページのカメラを「許可」にしてから、もう一度お試しください。';
+  if(n==='NotFoundError'||n==='OverconstrainedError') return 'カメラが見つかりませんでした。';
+  if(n==='NotReadableError') return 'カメラを他のアプリが使っています。そのアプリを閉じてからもう一度お試しください。';
+  return 'カメラを起動できませんでした。（'+(n||'不明なエラー')+'）';
+}
+function showGate(text, label='もう一度試す'){ gateMsg.textContent=text; startBtn.textContent=label; gate.hidden=false; setControls(false); }
+function setControls(on){ shutterBtn.disabled=!on; flipBtn.disabled=!on; }
+
+function stopCamera(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
+
+async function startCamera(){
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+    showGate('このブラウザではカメラを使えません。https:// で始まるアドレスでこのページを開いてください。');
+    return;
+  }
+  stopCamera();
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:3840},height:{ideal:2160}}});
+  }catch(e){
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:facing}}); }
+    catch(e2){ showGate(errText(e2)); return; }
+  }
+  started=true;
+  video.srcObject=stream;
+  video.classList.toggle('mirror',facing==='user');
+  try{ await video.play(); }catch(_){}
+  gate.hidden=true;
+  setControls(true);
+  setupZoom();
+  updateRes();
+}
+function updateRes(){ if(video.videoWidth) resEl.textContent=video.videoWidth+'×'+video.videoHeight; }
+video.addEventListener('loadedmetadata',updateRes);
+video.addEventListener('resize',updateRes);
+
+function track(){ return stream && stream.getVideoTracks()[0]; }
+function setupZoom(){
+  const t=track(); const caps=(t && t.getCapabilities) ? t.getCapabilities() : {};
+  if(caps.zoom && caps.zoom.max>caps.zoom.min){
+    zoom.min=caps.zoom.min; zoom.max=caps.zoom.max; zoom.step=caps.zoom.step||0.1;
+    const s=t.getSettings ? t.getSettings() : {};
+    zoom.value=s.zoom||caps.zoom.min; zoomOut.textContent=(+zoom.value).toFixed(1)+'×';
+    zoomWrap.hidden=false;
+  } else zoomWrap.hidden=true;
+}
+zoom.addEventListener('input',()=>{
+  zoomOut.textContent=(+zoom.value).toFixed(1)+'×';
+  const t=track(); if(t) t.applyConstraints({advanced:[{zoom:+zoom.value}]}).catch(()=>{});
+});
+
+function pad(n,l=2){ return String(n).padStart(l,'0'); }
+function fileName(){
+  const d=new Date();
+  return 'IMG_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+'_'+pad(shotCounter,3)+'.jpg';
+}
+
+function flash(){ flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+
+async function shoot(){
+  if(!stream||busy) return;
+  busy=true; shutterBtn.disabled=true;
+  try{
+    if(timer){
+      for(let i=timer;i>0;i--){ countEl.textContent=i; countEl.hidden=false; await sleep(1000); }
+      countEl.hidden=true;
+    }
+    const w=video.videoWidth, h=video.videoHeight;
+    if(!w) return;
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx=c.getContext('2d');
+    if(facing==='user'){ ctx.translate(w,0); ctx.scale(-1,1); }
+    ctx.drawImage(video,0,0,w,h);
+    flash();
+    if(navigator.vibrate) navigator.vibrate(12);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));
+    if(!blob){ toast('画像の作成に失敗しました。もう一度撮ってください。'); return; }
+    shotCounter++;
+    shots.push({blob,url:URL.createObjectURL(blob),name:fileName(),w,h,saved:false});
+    render();
+  } finally {
+    busy=false; shutterBtn.disabled=!stream;
+  }
+}
+
+function unsavedCount(){ return shots.filter(s=>!s.saved).length; }
+function render(){
+  frameNo.textContent=pad(shotCounter);
+  const last=shots[shots.length-1];
+  thumbBtn.disabled=!last;
+  thumbBtn.style.backgroundImage=last ? 'url("'+last.url+'")' : 'none';
+  const u=unsavedCount(); badge.hidden=!u; badge.textContent=u;
+  if(!$('gallery').hidden) renderGallery();
+}
+function renderGallery(){
+  const box=$('shots'); box.textContent='';
+  $('galSub').textContent=shots.length+'枚 · 未保存 '+unsavedCount()+'枚';
+  $('saveAll').disabled=!unsavedCount();
+  shots.slice().reverse().forEach(s=>{
+    const i=shots.indexOf(s);
+    const b=document.createElement('button'); b.type='button'; b.className='shot'; b.setAttribute('aria-label','写真 '+(i+1)+' を開く');
+    const img=document.createElement('img'); img.src=s.url; img.alt=''; b.appendChild(img);
+    if(s.saved){ const t=document.createElement('span'); t.className='tag'; t.textContent='保存済'; b.appendChild(t); }
+    b.addEventListener('click',()=>openViewer(i));
+    box.appendChild(b);
+  });
+  if(!shots.length){ const p=document.createElement('p'); p.className='note'; p.textContent='まだ写真はありません。'; box.appendChild(p); }
+}
+function openGallery(){ renderGallery(); $('gallery').hidden=false; }
+function openViewer(i){
+  viewing=i; const s=shots[i];
+  $('viewImg').src=s.url;
+  $('viewTitle').textContent=s.name;
+  $('viewSub').textContent=s.w+'×'+s.h+(s.saved?' · 保存済':'');
+  $('viewer').hidden=false;
+}
+
+async function save(list){
+  if(!list.length) return;
+  const files=list.map(s=>new File([s.blob],s.name,{type:'image/jpeg'}));
+  if(navigator.canShare && navigator.canShare({files})){
+    try{
+      await navigator.share({files});
+      list.forEach(s=>s.saved=true); render();
+      return;
+    }catch(e){ if(e && e.name==='AbortError') return; }
+  }
+  for(const s of list){
+    const a=document.createElement('a'); a.href=s.url; a.download=s.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    s.saved=true; await sleep(350);
+  }
+  render();
+  toast(list.length+'枚をダウンロードしました。');
+}
+
+startBtn.addEventListener('click',startCamera);
+shutterBtn.addEventListener('click',shoot);
+flipBtn.addEventListener('click',()=>{ facing = facing==='environment' ? 'user' : 'environment'; startCamera(); });
+thumbBtn.addEventListener('click',openGallery);
+$('gridBtn').addEventListener('click',e=>{ const on=e.currentTarget.getAttribute('aria-pressed')!=='true'; e.currentTarget.setAttribute('aria-pressed',on); $('grid').hidden=!on; });
+$('timerBtn').addEventListener('click',e=>{ timer=TIMERS[(TIMERS.indexOf(timer)+1)%TIMERS.length]; $('timerVal').textContent=timer?timer+'秒':'オフ'; e.currentTarget.setAttribute('aria-pressed',!!timer); });
+$('galClose').addEventListener('click',()=>$('gallery').hidden=true);
+$('saveAll').addEventListener('click',()=>save(shots.filter(s=>!s.saved)));
+$('viewClose').addEventListener('click',()=>{ $('viewer').hidden=true; renderGallery(); });
+$('viewSave').addEventListener('click',async()=>{ const s=shots[viewing]; if(!s) return; await save([s]); openViewer(viewing); });
+$('viewDel').addEventListener('click',()=>{
+  const s=shots[viewing]; if(!s) return;
+  URL.revokeObjectURL(s.url); shots.splice(viewing,1);
+  $('viewer').hidden=true; render(); renderGallery();
+  if(!shots.length) $('gallery').hidden=true;
+});
+
+// iOS stops the camera when the app goes to the background; restart on return.
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) stopCamera();
+  else if(started) startCamera();
+});
+window.addEventListener('beforeunload',e=>{ if(unsavedCount()){ e.preventDefault(); e.returnValue=''; } });
+
+// Try to start right away; if the browser wants a tap first, the gate button stays.
+startCamera();
+</script>
+</body>
+</html>
