@@ -7,356 +7,500 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="無音カメラ">
-<meta name="theme-color" content="#0e1113">
+<meta name="theme-color" content="#000000">
 <title>無音カメラ</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
 <style>
-/* Layout: status strip / full-bleed viewfinder / control deck, all inside the phone's safe areas. Single dark look (camera UI). */
+/* Layout: phone camera — top bar / 3:4 viewfinder / mode label / shutter row. Single black look, system font. */
 :root{
-  --ink:#0e1113;
-  --deck:#161a1d;
-  --line:#2b3237;
-  --fg:#e9ecec;
-  --dim:#8b979b;
-  --accent:#a8d0c9;
-  --danger:#e48a7a;
-  --f-ui:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
-  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --gutter-l:max(16px,env(safe-area-inset-left,0px));
-  --gutter-r:max(16px,env(safe-area-inset-right,0px));
+  --bg:#000;
+  --fg:#fff;
+  --dim:rgba(255,255,255,.62);
+  --yellow:#ffd60a;
+  --glass:rgba(38,38,40,.78);
+  --line:rgba(255,255,255,.16);
+  --red:#ff453a;
+  --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --gl:max(16px,env(safe-area-inset-left,0px));
+  --gr:max(16px,env(safe-area-inset-right,0px));
   color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-ui);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 [hidden]{display:none!important}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
-button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+button:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+svg{display:block}
 
 .app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 
-/* status strip */
-.status{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:10px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);font-family:var(--f-data);font-size:12px;letter-spacing:.06em;color:var(--dim);font-variant-numeric:tabular-nums}
-.mute{display:flex;align-items:center;gap:8px;color:var(--accent)}
-.mute svg{width:16px;height:16px}
-.frame-no{color:var(--fg)}
+/* top bar */
+.top{flex:none;height:50px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding-left:var(--gl);padding-right:var(--gr)}
+.tl{justify-self:start;display:flex;gap:2px}
+.tr{justify-self:end;display:flex;gap:2px}
+.tb{position:relative;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--fg)}
+.tb svg{width:22px;height:22px}
+.tb[aria-pressed="true"]{color:var(--yellow)}
+.tb .sup{position:absolute;right:1px;top:5px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.silent{display:flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:999px;background:var(--glass);font-size:12px;font-weight:600;color:var(--yellow)}
+.silent svg{width:14px;height:14px}
 
 /* viewfinder */
-.finder{position:relative;flex:1;min-height:0;background:#000;overflow:hidden}
-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
-video.mirror{transform:scaleX(-1)}
+.vf-wrap{flex:1;min-height:0;container-type:size;display:flex;justify-content:center;align-items:flex-start}
+.vf{position:relative;width:min(100cqw,75cqh);max-width:100%;aspect-ratio:3/4;overflow:hidden;background:#0d0d0e;touch-action:none}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:50% 50%}
 .grid{position:absolute;inset:0;pointer-events:none;
   background:
-    linear-gradient(to right,transparent calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% + .5px),transparent calc(66.666% + .5px)),
-    linear-gradient(to bottom,transparent calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% - .5px),rgba(255,255,255,.28) calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% - .5px),rgba(255,255,255,.28) calc(66.666% + .5px),transparent calc(66.666% + .5px))}
-.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-.flash.go{animation:flash .22s ease-out}
-@keyframes flash{0%{opacity:.75}100%{opacity:0}}
-.count{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-data);font-size:min(34vw,180px);font-weight:500;color:rgba(255,255,255,.92);text-shadow:0 2px 24px rgba(0,0,0,.5);pointer-events:none}
+   linear-gradient(to right,transparent calc(33.333% - .5px),rgba(255,255,255,.35) calc(33.333% - .5px) calc(33.333% + .5px),transparent calc(33.333% + .5px) calc(66.666% - .5px),rgba(255,255,255,.35) calc(66.666% - .5px) calc(66.666% + .5px),transparent calc(66.666% + .5px)),
+   linear-gradient(to bottom,transparent calc(33.333% - .5px),rgba(255,255,255,.35) calc(33.333% - .5px) calc(33.333% + .5px),transparent calc(33.333% + .5px) calc(66.666% - .5px),rgba(255,255,255,.35) calc(66.666% - .5px) calc(66.666% + .5px),transparent calc(66.666% + .5px))}
+.blackout{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+.blackout.go{animation:bo .2s ease-out}
+@keyframes bo{0%{opacity:1}100%{opacity:0}}
+.count{position:absolute;inset:0;display:grid;place-items:center;font-size:min(30vw,150px);font-weight:200;font-variant-numeric:tabular-nums;text-shadow:0 2px 20px rgba(0,0,0,.5);pointer-events:none}
+.lenses{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:4px;border-radius:999px;background:rgba(0,0,0,.3)}
+.lens{width:34px;height:34px;border-radius:50%;background:rgba(28,28,30,.72);font-size:11px;font-weight:600;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.lens.on{width:40px;height:40px;font-size:13px;color:var(--yellow)}
 
-.zoom{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(78%,320px);display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;background:rgba(14,17,19,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:var(--f-data);font-size:12px;font-variant-numeric:tabular-nums}
-.zoom input{flex:1;min-width:0;accent-color:var(--accent)}
-.zoom output{min-width:3.6em;text-align:right}
-
-/* start / error gate */
-.gate{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding-block:24px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);text-align:center;background:var(--ink)}
-.gate h1{margin:0;font-size:28px;font-weight:700;letter-spacing:.04em;text-wrap:balance}
-.gate p{margin:0;max-width:30em;color:var(--dim);line-height:1.7;font-size:14px;text-wrap:pretty}
-.gate .spec{font-family:var(--f-data);font-size:11px;letter-spacing:.12em;color:var(--accent)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;background:var(--fg);color:var(--ink);font-weight:700;font-size:15px}
-.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
-.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
-
-/* deck */
-.deck{background:var(--deck);border-top:1px solid var(--line);padding-block:12px 18px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);display:flex;flex-direction:column;gap:14px}
-.modes{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
-.chip{min-height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--dim);display:inline-flex;align-items:center;gap:6px}
-.chip[aria-pressed="true"]{color:var(--ink);background:var(--accent);border-color:var(--accent)}
-.chip .val{font-family:var(--f-data);font-size:12px}
-.row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
-.thumb{justify-self:start;position:relative;width:52px;height:52px;border-radius:10px;border:1px solid var(--line);background:#000 center/cover no-repeat}
-.thumb:disabled{opacity:.35;cursor:default}
-.badge{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--ink);font-family:var(--f-data);font-size:11px;font-weight:500;display:grid;place-items:center}
-.shutter{width:76px;height:76px;border-radius:50%;border:3px solid var(--fg);display:grid;place-items:center}
-.shutter span{width:60px;height:60px;border-radius:50%;background:var(--fg);transition:transform .08s ease}
+/* mode + controls */
+.mode{flex:none;height:42px;display:flex;justify-content:center;align-items:center;font-size:14px;font-weight:600;letter-spacing:.08em;color:var(--yellow)}
+.controls{flex:none;height:108px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
+.thumb{justify-self:start;position:relative;width:50px;height:50px}
+.thumb .ph{width:100%;height:100%;border-radius:8px;overflow:hidden;background:#1c1c1e}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb.pop .ph{animation:pop .32s ease-out}
+@keyframes pop{0%{transform:scale(.6);opacity:.4}100%{transform:scale(1);opacity:1}}
+.badge{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.shutter{width:78px;height:78px;border-radius:50%;border:4px solid #fff;padding:4px}
+.shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform .1s ease}
 .shutter:active span{transform:scale(.88)}
-.shutter:disabled{opacity:.4}
-.flip{justify-self:end;width:52px;height:52px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center}
+.shutter.counting span{transform:scale(.6);border-radius:8px;background:var(--red)}
+.shutter:disabled{opacity:.45}
+.flip{justify-self:end;width:48px;height:48px;border-radius:50%;background:#1c1c1e;display:grid;place-items:center}
 .flip svg{width:24px;height:24px}
+.flip.spin svg{animation:spin .45s ease}
+.flip:disabled{opacity:.45}
+@keyframes spin{to{transform:rotate(180deg)}}
 
-/* gallery + viewer sheets */
-.sheet{position:fixed;inset:0;z-index:10;background:var(--ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);border-bottom:1px solid var(--line)}
-.sheet-head h2{margin:0;font-size:16px;font-weight:700}
-.sheet-head .sub{font-family:var(--f-data);font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
-.icon-btn{min-width:44px;min-height:44px;display:grid;place-items:center;font-size:14px;color:var(--dim)}
-.shots{flex:1;min-height:0;overflow-y:auto;padding-block:12px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;align-content:start}
-.shot{position:relative;aspect-ratio:3/4;max-width:100%;border-radius:6px;overflow:hidden;background:#000}
-.shot img{width:100%;height:100%;object-fit:cover;display:block}
-.shot .tag{position:absolute;left:5px;bottom:5px;padding:1px 6px;border-radius:4px;background:rgba(14,17,19,.72);font-family:var(--f-data);font-size:10px;color:var(--accent)}
-.sheet-foot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding-block:12px 16px;padding-left:var(--gutter-l);padding-right:var(--gutter-r);border-top:1px solid var(--line)}
-.note{margin:0;width:100%;text-align:center;font-size:12px;color:var(--dim);line-height:1.6}
-.view-img{flex:1;min-height:0;display:grid;place-items:center;background:#000}
-.view-img img{max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+/* error gate */
+.gate{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding-block:24px;padding-left:var(--gl);padding-right:var(--gr);background:var(--bg);text-align:center}
+.gate h2{margin:0;font-size:20px;font-weight:700}
+.gate p{margin:0;max-width:30em;color:var(--dim);font-size:14px;line-height:1.7;text-wrap:pretty}
+.gate .how{max-width:30em;text-align:left;font-size:13px;line-height:1.7;color:var(--dim);background:#1c1c1e;border-radius:12px;padding:12px 14px}
+.gate .how b{color:var(--fg);font-weight:600}
+.pill{min-height:46px;padding:0 24px;border-radius:999px;background:var(--fg);color:#000;font-weight:700;font-size:15px}
 
-.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;max-width:calc(100% - 32px);padding:10px 16px;border-radius:10px;background:rgba(233,236,236,.95);color:var(--ink);font-size:13px;line-height:1.5;text-align:center}
+/* photo viewer */
+.viewer,.roll{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.vhead{flex:none;height:50px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.back{justify-self:start;display:flex;align-items:center;gap:2px;height:44px;padding-right:8px;color:var(--yellow);font-size:16px}
+.back svg{width:22px;height:22px}
+.vt{text-align:center;line-height:1.25}
+.vt b{display:block;font-size:15px;font-weight:600}
+.vt small{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.link{justify-self:end;height:44px;color:var(--yellow);font-size:16px}
+.stage{flex:1;min-height:0;display:grid;place-items:center;overflow:hidden;touch-action:pan-y}
+.stage img{max-width:100%;max-height:100%;object-fit:contain;transition:transform .2s ease}
+.vfoot{flex:none;height:64px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding-left:var(--gl);padding-right:var(--gr)}
+.act{display:flex;align-items:center;gap:6px;height:44px;color:var(--yellow);font-size:15px}
+.act svg{width:24px;height:24px}
+.act.del{justify-self:end;color:var(--yellow)}
+.state{font-size:12px;color:var(--dim)}
+.state.ok{color:var(--fg)}
 
-@media (prefers-reduced-motion:reduce){.flash.go{animation-duration:.01s}.shutter span{transition:none}}
+/* roll */
+.rgrid{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;align-content:start;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+@media (max-width:420px){.rgrid{grid-template-columns:repeat(3,1fr)}}
+.cell{position:relative;aspect-ratio:1;max-width:100%;background:#1c1c1e;overflow:hidden}
+.cell img{width:100%;height:100%;object-fit:cover;display:block}
+.cell .dot{position:absolute;right:6px;bottom:6px;width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px rgba(0,0,0,.4)}
+.rfoot{flex:none;display:flex;flex-direction:column;align-items:center;gap:8px;padding-block:12px 14px;padding-left:var(--gl);padding-right:var(--gr);border-top:1px solid var(--line)}
+.rfoot p{margin:0;font-size:12px;color:var(--dim);text-align:center}
+.pill:disabled{opacity:.4}
+.empty{grid-column:1/-1;padding:40px 16px;text-align:center;color:var(--dim);font-size:14px}
+
+/* action sheet */
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding-bottom:max(10px,env(safe-area-inset-bottom,0px));padding-left:var(--gl);padding-right:var(--gr)}
+.scard{width:min(100%,420px);display:flex;flex-direction:column;gap:8px}
+.sgroup{background:rgba(44,44,46,.96);border-radius:14px;overflow:hidden}
+.sgroup p{margin:0;padding:12px 16px;font-size:13px;color:var(--dim);text-align:center;border-bottom:1px solid var(--line)}
+.sbtn{width:100%;height:56px;font-size:18px;color:var(--yellow)}
+.sbtn.red{color:var(--red)}
+.sbtn.bold{font-weight:600}
+
+.toast{position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:50;max-width:calc(100% - 32px);padding:9px 16px;border-radius:999px;background:var(--glass);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);font-size:13px;line-height:1.45;text-align:center}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="app">
-  <header class="status">
-    <span class="mute" aria-label="シャッター音なし">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>
-      無音
-    </span>
-    <span id="res">— × —</span>
-    <span class="frame-no">No.<span id="frameNo">00</span></span>
-  </header>
-
-  <main class="finder">
-    <video id="video" playsinline muted autoplay></video>
-    <div class="grid" id="grid" hidden></div>
-    <div class="flash" id="flash"></div>
-    <div class="count" id="count" hidden></div>
-    <div class="zoom" id="zoomWrap" hidden>
-      <span>W</span>
-      <input type="range" id="zoom" aria-label="ズーム">
-      <output id="zoomOut">1.0×</output>
-    </div>
-
-    <section class="gate" id="gate">
-      <div class="spec">SHUTTER SOUND · OFF</div>
-      <h1>無音カメラ</h1>
-      <p id="gateMsg">カメラ映像のコマをそのまま静止画にするので、シャッター音は鳴りません。撮った写真は「保存」から写真アプリに入れられます。</p>
-      <button class="btn" id="startBtn" type="button">カメラを起動</button>
-    </section>
-  </main>
-
-  <footer class="deck">
-    <div class="modes">
-      <button class="chip" id="gridBtn" type="button" aria-pressed="false">グリッド</button>
-      <button class="chip" id="timerBtn" type="button" aria-pressed="false">タイマー <span class="val" id="timerVal">オフ</span></button>
-    </div>
-    <div class="row">
-      <button class="thumb" id="thumb" type="button" aria-label="撮った写真を見る" disabled><span class="badge" id="badge" hidden>0</span></button>
-      <button class="shutter" id="shutter" type="button" aria-label="撮影" disabled><span></span></button>
-      <button class="flip" id="flip" type="button" aria-label="前後カメラを切り替え" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></svg>
+  <header class="top">
+    <div class="tl">
+      <button class="tb" id="autoBtn" type="button" aria-pressed="true" aria-label="撮るたびに保存">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></svg>
       </button>
     </div>
-  </footer>
+    <div class="silent" aria-label="シャッター音なし">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>
+      無音
+    </div>
+    <div class="tr">
+      <button class="tb" id="timerBtn" type="button" aria-pressed="false" aria-label="セルフタイマー">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2"/><path d="M9.5 3h5"/></svg>
+        <span class="sup" id="timerVal"></span>
+      </button>
+      <button class="tb" id="gridBtn" type="button" aria-pressed="false" aria-label="グリッド">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="vf-wrap">
+    <div class="vf" id="vf">
+      <video id="video" playsinline muted autoplay></video>
+      <div class="grid" id="grid" hidden></div>
+      <div class="blackout" id="blackout"></div>
+      <div class="count" id="count" hidden></div>
+      <div class="lenses" id="lenses" hidden></div>
+    </div>
+  </div>
+
+  <div class="mode">写真</div>
+
+  <div class="controls">
+    <button class="thumb" id="thumb" type="button" aria-label="撮った写真を見る">
+      <div class="ph"><img id="thumbImg" alt="" hidden></div>
+      <span class="badge" id="badge" hidden></span>
+    </button>
+    <button class="shutter" id="shutter" type="button" aria-label="撮影" disabled><span></span></button>
+    <button class="flip" id="flip" type="button" aria-label="前後カメラを切り替え" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 10.5A7.5 7.5 0 0 0 6 7.2L4.5 9"/><path d="M4.5 4.5V9H9"/><path d="M4.5 13.5A7.5 7.5 0 0 0 18 16.8l1.5-1.8"/><path d="M19.5 19.5V15H15"/></svg>
+    </button>
+  </div>
 </div>
 
-<!-- gallery -->
-<section class="sheet" id="gallery" hidden aria-label="撮った写真">
-  <div class="sheet-head">
-    <div><h2>撮った写真</h2><div class="sub" id="galSub"></div></div>
-    <button class="icon-btn" id="galClose" type="button">閉じる</button>
+<!-- error / permission gate -->
+<section class="gate" id="gate" hidden>
+  <h2 id="gateTitle">カメラを使えません</h2>
+  <p id="gateMsg"></p>
+  <div class="how">
+    <b>毎回の確認をなくすには（iPhone）</b><br>
+    Safariでこのページを開き、アドレスバーの「ぁあ」→「Webサイトの設定」→「カメラ」を<b>「許可」</b>にします。<br>
+    設定アプリ →「アプリ」→「Safari」→「カメラ」を「許可」にすると、すべてのサイトで確認が出なくなります。
   </div>
-  <div class="shots" id="shots"></div>
-  <div class="sheet-foot">
-    <button class="btn" id="saveAll" type="button">未保存をまとめて保存</button>
-    <p class="note">このアプリを閉じると、保存していない写真は消えます。</p>
-  </div>
+  <button class="pill" id="retry" type="button">もう一度試す</button>
 </section>
 
 <!-- single photo -->
-<section class="sheet" id="viewer" hidden aria-label="写真">
-  <div class="sheet-head">
-    <div><h2 id="viewTitle">写真</h2><div class="sub" id="viewSub"></div></div>
-    <button class="icon-btn" id="viewClose" type="button">戻る</button>
+<section class="viewer" id="viewer" hidden aria-label="写真">
+  <div class="vhead">
+    <button class="back" id="vBack" type="button" aria-label="カメラに戻る">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>カメラ
+    </button>
+    <div class="vt"><b id="vDate"></b><small id="vTime"></small></div>
+    <button class="link" id="vAll" type="button">すべて</button>
   </div>
-  <div class="view-img"><img id="viewImg" alt="撮影した写真"></div>
-  <div class="sheet-foot">
-    <button class="btn" id="viewSave" type="button">保存</button>
-    <button class="btn danger" id="viewDel" type="button">削除</button>
-    <p class="note">保存がうまくいかないときは、写真を長押しして保存できます。</p>
+  <div class="stage" id="stage"><img id="vImg" alt="撮影した写真"></div>
+  <div class="vfoot">
+    <button class="act" id="vSave" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3.5"/><path d="m7.5 8 4.5-4.5L16.5 8"/><path d="M8 11H6a1.5 1.5 0 0 0-1.5 1.5v7A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 18 11h-2"/></svg>
+      保存
+    </button>
+    <span class="state" id="vState"></span>
+    <button class="act del" id="vDel" type="button" aria-label="削除">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5h16"/><path d="M9.5 6.5V4.5h5v2"/><path d="M6 6.5l1 13a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5l1-13"/><path d="M10 10.5v6M14 10.5v6"/></svg>
+    </button>
   </div>
 </section>
+
+<!-- all photos -->
+<section class="roll" id="roll" hidden aria-label="撮った写真">
+  <div class="vhead">
+    <button class="back" id="rBack" type="button" aria-label="戻る">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>戻る
+    </button>
+    <div class="vt"><b>撮った写真</b><small id="rSub"></small></div>
+    <span></span>
+  </div>
+  <div class="rgrid" id="rgrid"></div>
+  <div class="rfoot">
+    <button class="pill" id="saveAll" type="button">未保存をまとめて写真に保存</button>
+    <p>赤い点は、まだ写真アプリに入れていない写真です。</p>
+  </div>
+</section>
+
+<!-- delete confirm -->
+<div class="sheet" id="sheet" hidden>
+  <div class="scard">
+    <div class="sgroup">
+      <p>この写真は無音カメラから削除されます。写真アプリに保存した分は残ります。</p>
+      <button class="sbtn red" id="delYes" type="button">写真を削除</button>
+    </div>
+    <div class="sgroup"><button class="sbtn bold" id="delNo" type="button">キャンセル</button></div>
+  </div>
+</div>
 
 <div class="toast" id="toast" hidden></div>
 
 <script>
-const $ = id => document.getElementById(id);
-const video=$('video'), gate=$('gate'), gateMsg=$('gateMsg'), startBtn=$('startBtn');
-const shutterBtn=$('shutter'), flipBtn=$('flip'), thumbBtn=$('thumb'), badge=$('badge');
-const resEl=$('res'), frameNo=$('frameNo'), flashEl=$('flash'), countEl=$('count');
-const zoomWrap=$('zoomWrap'), zoom=$('zoom'), zoomOut=$('zoomOut');
+const $=id=>document.getElementById(id);
+const video=$('video'), vf=$('vf'), lensBox=$('lenses');
+const shutterBtn=$('shutter'), flipBtn=$('flip'), thumbBtn=$('thumb'), thumbImg=$('thumbImg'), badge=$('badge');
 
-let stream=null, facing='environment', started=false, busy=false;
-let timer=0; const TIMERS=[0,3,10];
-let shots=[]; let viewing=-1; let shotCounter=0;
+const MAXZ=5;
+const S={stream:null,facing:'environment',lens:'wide',ultraId:null,scanned:false,z:1,timer:0,grid:false,auto:true,busy:false,started:false};
+let shots=[]; let vi=-1;
 
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
+/* ---------- prefs (per device, optional) ---------- */
+function loadPrefs(){ try{ const p=JSON.parse(localStorage.getItem('sc-prefs')||'{}'); if(typeof p.auto==='boolean') S.auto=p.auto; if([0,3,10].includes(p.timer)) S.timer=p.timer; if(typeof p.grid==='boolean') S.grid=p.grid; }catch(_){} }
+function savePrefs(){ try{ localStorage.setItem('sc-prefs',JSON.stringify({auto:S.auto,timer:S.timer,grid:S.grid})); }catch(_){} }
+
+/* ---------- local photo store (survives closing the app) ---------- */
+const DB={db:null,
+  async open(){ try{ this.db=await new Promise((res,rej)=>{ const r=indexedDB.open('silent-camera',1); r.onupgradeneeded=()=>r.result.createObjectStore('shots',{keyPath:'id'}); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }catch(_){ this.db=null; } },
+  run(mode,fn){ return new Promise(res=>{ if(!this.db) return res(null); try{ const t=this.db.transaction('shots',mode); const req=fn(t.objectStore('shots')); t.oncomplete=()=>res(req?req.result:null); t.onerror=t.onabort=()=>res(null); }catch(_){ res(null); } }); },
+  put(s){ return this.run('readwrite',st=>st.put({id:s.id,blob:s.blob,name:s.name,w:s.w,h:s.h,t:s.t,saved:s.saved})); },
+  del(id){ return this.run('readwrite',st=>st.delete(id)); },
+  all(){ return this.run('readonly',st=>st.getAll()); }
+};
+
+/* ---------- helpers ---------- */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const pad=(n,l=2)=>String(n).padStart(l,'0');
 let toastT;
-function toast(text){ const t=$('toast'); t.textContent=text; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
+function toast(t,ms=2400){ const el=$('toast'); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,ms); }
+function fmtZ(v){ let s=String(Math.round(v*10)/10); if(s.startsWith('0.')) s=s.slice(1); return s; }
+function dataURLToBlob(u){ const [h,b]=u.split(','); const bin=atob(b); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new Blob([a],{type:h.slice(5,h.indexOf(';'))}); }
 
+/* ---------- camera ---------- */
 function errText(e){
-  const n=e && e.name;
-  if(n==='NotAllowedError'||n==='SecurityError') return 'カメラの使用が許可されていません。ブラウザの設定でこのページのカメラを「許可」にしてから、もう一度お試しください。';
+  const n=e&&e.name;
+  if(n==='NotAllowedError'||n==='SecurityError') return 'カメラの使用が許可されていません。下の設定で「許可」にしてから、もう一度お試しください。';
   if(n==='NotFoundError'||n==='OverconstrainedError') return 'カメラが見つかりませんでした。';
-  if(n==='NotReadableError') return 'カメラを他のアプリが使っています。そのアプリを閉じてからもう一度お試しください。';
-  return 'カメラを起動できませんでした。（'+(n||'不明なエラー')+'）';
+  if(n==='NotReadableError') return 'ほかのアプリがカメラを使っています。そのアプリを閉じてからお試しください。';
+  return 'カメラを起動できませんでした（'+(n||'不明なエラー')+'）。';
 }
-function showGate(text, label='もう一度試す'){ gateMsg.textContent=text; startBtn.textContent=label; gate.hidden=false; setControls(false); }
-function setControls(on){ shutterBtn.disabled=!on; flipBtn.disabled=!on; }
-
-function stopCamera(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
-
+function showGate(text){ $('gateMsg').textContent=text; $('gate').hidden=false; shutterBtn.disabled=true; flipBtn.disabled=true; }
+function stopCamera(){ if(S.stream){ S.stream.getTracks().forEach(t=>t.stop()); S.stream=null; } }
+function constraints(){
+  const v={width:{ideal:4032},height:{ideal:3024}};
+  if(S.facing==='user') v.facingMode='user';
+  else if(S.lens==='ultra'&&S.ultraId) v.deviceId={exact:S.ultraId};
+  else v.facingMode={ideal:'environment'};
+  return {audio:false,video:v};
+}
 async function startCamera(){
-  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
-    showGate('このブラウザではカメラを使えません。https:// で始まるアドレスでこのページを開いてください。');
-    return;
-  }
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){ showGate('このブラウザではカメラを使えません。https:// のアドレスで開いているか確認してください。'); return; }
   stopCamera();
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:3840},height:{ideal:2160}}});
-  }catch(e){
-    try{ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:facing}}); }
+  try{ S.stream=await navigator.mediaDevices.getUserMedia(constraints()); }
+  catch(e){
+    if(S.lens==='ultra'){ S.lens='wide'; return startCamera(); }
+    try{ S.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:S.facing}}); }
     catch(e2){ showGate(errText(e2)); return; }
   }
-  started=true;
-  video.srcObject=stream;
-  video.classList.toggle('mirror',facing==='user');
+  S.started=true;
+  video.srcObject=S.stream;
   try{ await video.play(); }catch(_){}
-  gate.hidden=true;
-  setControls(true);
-  setupZoom();
-  updateRes();
+  $('gate').hidden=true;
+  shutterBtn.disabled=false; flipBtn.disabled=false;
+  if(!S.scanned){ S.scanned=true; await scanLenses(); }
+  applyZoom(); renderLenses();
 }
-function updateRes(){ if(video.videoWidth) resEl.textContent=video.videoWidth+'×'+video.videoHeight; }
-video.addEventListener('loadedmetadata',updateRes);
-video.addEventListener('resize',updateRes);
-
-function track(){ return stream && stream.getVideoTracks()[0]; }
-function setupZoom(){
-  const t=track(); const caps=(t && t.getCapabilities) ? t.getCapabilities() : {};
-  if(caps.zoom && caps.zoom.max>caps.zoom.min){
-    zoom.min=caps.zoom.min; zoom.max=caps.zoom.max; zoom.step=caps.zoom.step||0.1;
-    const s=t.getSettings ? t.getSettings() : {};
-    zoom.value=s.zoom||caps.zoom.min; zoomOut.textContent=(+zoom.value).toFixed(1)+'×';
-    zoomWrap.hidden=false;
-  } else zoomWrap.hidden=true;
-}
-zoom.addEventListener('input',()=>{
-  zoomOut.textContent=(+zoom.value).toFixed(1)+'×';
-  const t=track(); if(t) t.applyConstraints({advanced:[{zoom:+zoom.value}]}).catch(()=>{});
-});
-
-function pad(n,l=2){ return String(n).padStart(l,'0'); }
-function fileName(){
-  const d=new Date();
-  return 'IMG_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+'_'+pad(shotCounter,3)+'.jpg';
-}
-
-function flash(){ flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
-
-async function shoot(){
-  if(!stream||busy) return;
-  busy=true; shutterBtn.disabled=true;
+async function scanLenses(){
   try{
-    if(timer){
-      for(let i=timer;i>0;i--){ countEl.textContent=i; countEl.hidden=false; await sleep(1000); }
-      countEl.hidden=true;
-    }
-    const w=video.videoWidth, h=video.videoHeight;
-    if(!w) return;
-    const c=document.createElement('canvas'); c.width=w; c.height=h;
-    const ctx=c.getContext('2d');
-    if(facing==='user'){ ctx.translate(w,0); ctx.scale(-1,1); }
-    ctx.drawImage(video,0,0,w,h);
-    flash();
-    if(navigator.vibrate) navigator.vibrate(12);
-    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));
-    if(!blob){ toast('画像の作成に失敗しました。もう一度撮ってください。'); return; }
-    shotCounter++;
-    shots.push({blob,url:URL.createObjectURL(blob),name:fileName(),w,h,saved:false});
-    render();
-  } finally {
-    busy=false; shutterBtn.disabled=!stream;
+    const cams=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    const u=cams.find(d=>/超広角|ultra ?wide/i.test(d.label));
+    S.ultraId=u?u.deviceId:null;
+  }catch(_){ S.ultraId=null; }
+}
+function liveTrack(){ const t=S.stream&&S.stream.getVideoTracks()[0]; return t&&t.readyState==='live'?t:null; }
+
+/* ---------- zoom & lenses ---------- */
+function applyZoom(){ const m=S.facing==='user'?-1:1; video.style.transform='scale('+(m*S.z)+','+S.z+')'; }
+function lensOpts(){ const o=[]; if(S.ultraId) o.push({k:'ultra',n:.5}); o.push({k:'w1',n:1},{k:'w2',n:2}); return o; }
+function activeKey(){ if(S.lens==='ultra') return 'ultra'; return S.z>=2?'w2':'w1'; }
+function renderLenses(){
+  if(S.facing==='user'){ lensBox.hidden=true; return; }
+  lensBox.hidden=false; lensBox.textContent='';
+  const act=activeKey(); const base=S.lens==='ultra'?.5:1;
+  lensOpts().forEach(o=>{
+    const b=document.createElement('button'); b.type='button'; b.className='lens'+(o.k===act?' on':'');
+    b.textContent=o.k===act ? fmtZ(base*S.z)+'×' : fmtZ(o.n);
+    b.setAttribute('aria-label',fmtZ(o.n)+'倍');
+    b.addEventListener('click',()=>pickLens(o.k));
+    lensBox.appendChild(b);
+  });
+}
+async function pickLens(k){
+  if(k==='ultra'){ if(S.lens!=='ultra'){ S.lens='ultra'; S.z=1; await startCamera(); } else { S.z=1; applyZoom(); renderLenses(); } return; }
+  const z=k==='w2'?2:1;
+  if(S.lens==='ultra'){ S.lens='wide'; S.z=z; await startCamera(); }
+  else { S.z=z; applyZoom(); renderLenses(); }
+}
+let pinch=null;
+const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+vf.addEventListener('touchstart',e=>{ if(e.touches.length===2){ pinch={d:dist(e.touches),z:S.z}; e.preventDefault(); } },{passive:false});
+vf.addEventListener('touchmove',e=>{ if(pinch&&e.touches.length===2){ S.z=Math.min(MAXZ,Math.max(1,pinch.z*dist(e.touches)/pinch.d)); applyZoom(); renderLenses(); e.preventDefault(); } },{passive:false});
+vf.addEventListener('touchend',e=>{ if(e.touches.length<2) pinch=null; });
+document.addEventListener('gesturestart',e=>e.preventDefault());
+
+/* ---------- capture ---------- */
+function fileName(t){ const d=new Date(t); return 'IMG_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+'_'+pad(d.getMilliseconds(),3)+'.jpg'; }
+function captureSync(){
+  const vw=video.videoWidth, vh=video.videoHeight; if(!vw||!vh) return null;
+  const r=vf.getBoundingClientRect(); const s=Math.max(r.width/vw,r.height/vh);
+  let w=r.width/s/S.z, h=r.height/s/S.z;
+  const sx=(vw-w)/2, sy=(vh-h)/2;
+  w=Math.max(1,Math.round(w)); h=Math.max(1,Math.round(h));
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const ctx=c.getContext('2d');
+  if(S.facing==='user'){ ctx.translate(w,0); ctx.scale(-1,1); }
+  ctx.drawImage(video,sx,sy,w,h,0,0,w,h);
+  let blob;
+  try{ blob=dataURLToBlob(c.toDataURL('image/jpeg',0.92)); }catch(_){ return null; }
+  c.width=c.height=0;
+  const t=Date.now();
+  return {id:t+'-'+Math.random().toString(36).slice(2,7),blob,url:URL.createObjectURL(blob),name:fileName(t),w,h,t,saved:false};
+}
+function feedback(){ const b=$('blackout'); b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); if(navigator.vibrate) navigator.vibrate(10); }
+function take(fromTap){
+  feedback();
+  const shot=captureSync();
+  if(!shot){ toast('撮影できませんでした。もう一度お試しください。'); return; }
+  shots.push(shot); DB.put(shot);
+  renderThumb(true);
+  if(S.auto){
+    if(fromTap) saveShots([shot]);
+    else toast('タイマーで撮った写真は、左下のサムネイルから保存してください。',3200);
   }
 }
+async function runTimer(){
+  S.busy=true; shutterBtn.classList.add('counting');
+  const cnt=$('count');
+  for(let i=S.timer;i>0;i--){ cnt.textContent=i; cnt.hidden=false; await sleep(1000); if(!S.busy) break; }
+  cnt.hidden=true; shutterBtn.classList.remove('counting');
+  const go=S.busy; S.busy=false;
+  if(go) take(false);
+}
+shutterBtn.addEventListener('click',()=>{
+  if(!S.stream) return;
+  if(S.busy){ S.busy=false; return; }        // tap during countdown cancels
+  if(S.timer) runTimer(); else take(true);
+});
 
-function unsavedCount(){ return shots.filter(s=>!s.saved).length; }
-function render(){
-  frameNo.textContent=pad(shotCounter);
-  const last=shots[shots.length-1];
-  thumbBtn.disabled=!last;
-  thumbBtn.style.backgroundImage=last ? 'url("'+last.url+'")' : 'none';
-  const u=unsavedCount(); badge.hidden=!u; badge.textContent=u;
-  if(!$('gallery').hidden) renderGallery();
-}
-function renderGallery(){
-  const box=$('shots'); box.textContent='';
-  $('galSub').textContent=shots.length+'枚 · 未保存 '+unsavedCount()+'枚';
-  $('saveAll').disabled=!unsavedCount();
-  shots.slice().reverse().forEach(s=>{
-    const i=shots.indexOf(s);
-    const b=document.createElement('button'); b.type='button'; b.className='shot'; b.setAttribute('aria-label','写真 '+(i+1)+' を開く');
-    const img=document.createElement('img'); img.src=s.url; img.alt=''; b.appendChild(img);
-    if(s.saved){ const t=document.createElement('span'); t.className='tag'; t.textContent='保存済'; b.appendChild(t); }
-    b.addEventListener('click',()=>openViewer(i));
-    box.appendChild(b);
-  });
-  if(!shots.length){ const p=document.createElement('p'); p.className='note'; p.textContent='まだ写真はありません。'; box.appendChild(p); }
-}
-function openGallery(){ renderGallery(); $('gallery').hidden=false; }
-function openViewer(i){
-  viewing=i; const s=shots[i];
-  $('viewImg').src=s.url;
-  $('viewTitle').textContent=s.name;
-  $('viewSub').textContent=s.w+'×'+s.h+(s.saved?' · 保存済':'');
-  $('viewer').hidden=false;
-}
-
-async function save(list){
+/* ---------- saving to Photos ---------- */
+function markSaved(list){ list.forEach(s=>{ s.saved=true; DB.put(s); }); renderThumb(false); if(!$('viewer').hidden) showPhoto(); if(!$('roll').hidden) renderRoll(); }
+async function saveShots(list){
   if(!list.length) return;
   const files=list.map(s=>new File([s.blob],s.name,{type:'image/jpeg'}));
-  if(navigator.canShare && navigator.canShare({files})){
-    try{
-      await navigator.share({files});
-      list.forEach(s=>s.saved=true); render();
-      return;
-    }catch(e){ if(e && e.name==='AbortError') return; }
+  if(navigator.canShare&&navigator.canShare({files})){
+    try{ await navigator.share({files}); markSaved(list); return; }
+    catch(e){
+      if(e&&e.name==='AbortError') return;
+      if(e&&e.name==='NotAllowedError'){ toast('保存画面を開けませんでした。左下のサムネイルから保存してください。',3200); return; }
+    }
   }
-  for(const s of list){
-    const a=document.createElement('a'); a.href=s.url; a.download=s.name;
-    document.body.appendChild(a); a.click(); a.remove();
-    s.saved=true; await sleep(350);
-  }
-  render();
-  toast(list.length+'枚をダウンロードしました。');
+  for(const s of list){ const a=document.createElement('a'); a.href=s.url; a.download=s.name; document.body.appendChild(a); a.click(); a.remove(); await sleep(300); }
+  markSaved(list);
+  toast(list.length+'枚をダウンロードしました');
 }
 
-startBtn.addEventListener('click',startCamera);
-shutterBtn.addEventListener('click',shoot);
-flipBtn.addEventListener('click',()=>{ facing = facing==='environment' ? 'user' : 'environment'; startCamera(); });
-thumbBtn.addEventListener('click',openGallery);
-$('gridBtn').addEventListener('click',e=>{ const on=e.currentTarget.getAttribute('aria-pressed')!=='true'; e.currentTarget.setAttribute('aria-pressed',on); $('grid').hidden=!on; });
-$('timerBtn').addEventListener('click',e=>{ timer=TIMERS[(TIMERS.indexOf(timer)+1)%TIMERS.length]; $('timerVal').textContent=timer?timer+'秒':'オフ'; e.currentTarget.setAttribute('aria-pressed',!!timer); });
-$('galClose').addEventListener('click',()=>$('gallery').hidden=true);
-$('saveAll').addEventListener('click',()=>save(shots.filter(s=>!s.saved)));
-$('viewClose').addEventListener('click',()=>{ $('viewer').hidden=true; renderGallery(); });
-$('viewSave').addEventListener('click',async()=>{ const s=shots[viewing]; if(!s) return; await save([s]); openViewer(viewing); });
-$('viewDel').addEventListener('click',()=>{
-  const s=shots[viewing]; if(!s) return;
-  URL.revokeObjectURL(s.url); shots.splice(viewing,1);
-  $('viewer').hidden=true; render(); renderGallery();
-  if(!shots.length) $('gallery').hidden=true;
+/* ---------- thumbnail / viewer / roll ---------- */
+const unsaved=()=>shots.filter(s=>!s.saved);
+function renderThumb(pop){
+  const last=shots[shots.length-1];
+  if(last){ thumbImg.src=last.url; thumbImg.hidden=false; } else { thumbImg.hidden=true; thumbImg.removeAttribute('src'); }
+  const n=unsaved().length; badge.hidden=!n; badge.textContent=n;
+  if(pop){ thumbBtn.classList.remove('pop'); void thumbBtn.offsetWidth; thumbBtn.classList.add('pop'); }
+}
+function openViewer(i){ if(!shots.length) return; vi=Math.max(0,Math.min(shots.length-1,i)); showPhoto(); $('viewer').hidden=false; }
+function showPhoto(){
+  const s=shots[vi]; if(!s){ $('viewer').hidden=true; return; }
+  $('vImg').src=s.url;
+  const d=new Date(s.t);
+  const today=new Date(); const same=d.toDateString()===today.toDateString();
+  $('vDate').textContent=same?'今日':(d.getMonth()+1)+'月'+d.getDate()+'日';
+  $('vTime').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+'　'+(vi+1)+' / '+shots.length;
+  const st=$('vState'); st.textContent=s.saved?'写真に保存済み':'未保存'; st.className='state'+(s.saved?' ok':'');
+}
+function renderRoll(){
+  const g=$('rgrid'); g.textContent='';
+  const n=unsaved().length;
+  $('rSub').textContent=shots.length+'枚・未保存'+n+'枚';
+  $('saveAll').disabled=!n;
+  if(!shots.length){ const p=document.createElement('div'); p.className='empty'; p.textContent='まだ写真はありません。'; g.appendChild(p); return; }
+  shots.forEach((s,i)=>{
+    const b=document.createElement('button'); b.type='button'; b.className='cell'; b.setAttribute('aria-label','写真'+(i+1));
+    const img=document.createElement('img'); img.src=s.url; img.alt=''; img.loading='lazy'; b.appendChild(img);
+    if(!s.saved){ const d=document.createElement('span'); d.className='dot'; b.appendChild(d); }
+    b.addEventListener('click',()=>{ $('roll').hidden=true; openViewer(i); });
+    g.appendChild(b);
+  });
+  requestAnimationFrame(()=>{ g.scrollTop=g.scrollHeight; });
+}
+
+thumbBtn.addEventListener('click',()=>{ if(shots.length) openViewer(shots.length-1); });
+$('vBack').addEventListener('click',()=>{ $('viewer').hidden=true; });
+$('vAll').addEventListener('click',()=>{ $('viewer').hidden=true; renderRoll(); $('roll').hidden=false; });
+$('rBack').addEventListener('click',()=>{ $('roll').hidden=true; });
+$('vSave').addEventListener('click',()=>{ const s=shots[vi]; if(s) saveShots([s]); });
+$('saveAll').addEventListener('click',()=>saveShots(unsaved()));
+$('vDel').addEventListener('click',()=>{ $('sheet').hidden=false; });
+$('delNo').addEventListener('click',()=>{ $('sheet').hidden=true; });
+$('sheet').addEventListener('click',e=>{ if(e.target.id==='sheet') $('sheet').hidden=true; });
+$('delYes').addEventListener('click',()=>{
+  $('sheet').hidden=true;
+  const s=shots[vi]; if(!s) return;
+  URL.revokeObjectURL(s.url); DB.del(s.id); shots.splice(vi,1);
+  renderThumb(false);
+  if(!shots.length){ $('viewer').hidden=true; return; }
+  vi=Math.min(vi,shots.length-1); showPhoto();
+});
+// swipe between photos
+let sw=null;
+$('stage').addEventListener('touchstart',e=>{ if(e.touches.length===1) sw={x:e.touches[0].clientX,y:e.touches[0].clientY}; },{passive:true});
+$('stage').addEventListener('touchend',e=>{
+  if(!sw) return; const t=e.changedTouches[0]; const dx=t.clientX-sw.x, dy=t.clientY-sw.y; sw=null;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){ const n=vi+(dx<0?1:-1); if(n>=0&&n<shots.length){ vi=n; showPhoto(); } }
+  else if(dy>90&&Math.abs(dy)>Math.abs(dx)){ $('viewer').hidden=true; }
 });
 
-// iOS stops the camera when the app goes to the background; restart on return.
+/* ---------- top bar ---------- */
+function renderTop(){
+  $('autoBtn').setAttribute('aria-pressed',S.auto);
+  $('timerBtn').setAttribute('aria-pressed',!!S.timer);
+  $('timerVal').textContent=S.timer?S.timer:'';
+  $('gridBtn').setAttribute('aria-pressed',S.grid);
+  $('grid').hidden=!S.grid;
+}
+$('autoBtn').addEventListener('click',()=>{ S.auto=!S.auto; renderTop(); savePrefs(); toast(S.auto?'撮るたびに写真へ保存：オン':'撮るたびに写真へ保存：オフ'); });
+$('timerBtn').addEventListener('click',()=>{ const T=[0,3,10]; S.timer=T[(T.indexOf(S.timer)+1)%T.length]; renderTop(); savePrefs(); toast(S.timer?'セルフタイマー '+S.timer+'秒':'セルフタイマー：オフ'); });
+$('gridBtn').addEventListener('click',()=>{ S.grid=!S.grid; renderTop(); savePrefs(); });
+flipBtn.addEventListener('click',()=>{
+  S.facing=S.facing==='environment'?'user':'environment'; S.lens='wide'; S.z=1;
+  flipBtn.classList.remove('spin'); void flipBtn.offsetWidth; flipBtn.classList.add('spin');
+  startCamera();
+});
+$('retry').addEventListener('click',startCamera);
+
+/* Keep the same camera stream across app switches so iOS doesn't ask again; restart only if it actually ended. */
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden) stopCamera();
-  else if(started) startCamera();
+  if(document.hidden||!S.started) return;
+  if(liveTrack()){ video.play().catch(()=>{}); } else startCamera();
 });
-window.addEventListener('beforeunload',e=>{ if(unsavedCount()){ e.preventDefault(); e.returnValue=''; } });
 
-// Try to start right away; if the browser wants a tap first, the gate button stays.
-startCamera();
+/* ---------- boot ---------- */
+(async()=>{
+  loadPrefs(); renderTop();
+  startCamera();
+  await DB.open();
+  const early=shots.slice(); early.forEach(s=>DB.put(s));
+  const saved=(await DB.all()||[]).filter(s=>!early.some(e=>e.id===s.id));
+  if(saved&&saved.length){
+    saved.sort((a,b)=>a.t-b.t);
+    shots=saved.map(s=>Object.assign(s,{url:URL.createObjectURL(s.blob)})).concat(shots);
+    renderThumb(false);
+  }
+})();
 </script>
 </body>
 </html>
